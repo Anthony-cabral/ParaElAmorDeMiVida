@@ -501,7 +501,7 @@ export function go(scene){
         class:'scene-art',
 
         src:
-          `/assets/images/${backgrounds[scene]}.webp`,
+          `/assets/images/${backgrounds[scene]}.png`,
 
         alt:
           scene==='entry'||
@@ -845,7 +845,7 @@ function renderGarden(){
           'img',
           {
             src:
-              '/assets/images/bouquet.webp',
+              '/assets/images/bouquet.png',
 
             alt:
               'Ramo completo de tres girasoles, rosas amarillas, tres lirios y flores silvestres, con follaje, papel crema y lazo dorado. A su lado, nuestro gato crema.',
