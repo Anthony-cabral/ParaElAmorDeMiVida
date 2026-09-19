@@ -2,7 +2,7 @@ export function createGmailNotifier(env = process.env) {
   const url = env.MAIL_API_URL?.trim();
   const secret = env.MAIL_API_SECRET?.trim();
 
-  return async function sendNotification() {
+  return async function sendNotification(info = {}) {
     if (!url || !secret) {
       console.error(
         '[notification] disabled: falta MAIL_API_URL o MAIL_API_SECRET'
@@ -10,15 +10,27 @@ export function createGmailNotifier(env = process.env) {
       return 'disabled';
     }
 
+    const clean = (value, max) =>
+      typeof value === 'string'
+        ? value.replace(/\s+/g, ' ').trim().slice(0, max)
+        : '';
+
+    const payload = {
+      secret,
+      scene: clean(info.scene, 30),
+      button: clean(info.button, 120),
+      device: clean(info.device, 100),
+      platform: clean(info.platform, 100),
+      browser: clean(info.browser, 100)
+    };
+
     try {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          secret
-        }),
+        body: JSON.stringify(payload),
         redirect: 'follow',
         signal: AbortSignal.timeout(15000)
       });
@@ -40,7 +52,7 @@ export function createGmailNotifier(env = process.env) {
       }
 
       console.log(
-        '[notification] sent: Google Apps Script aceptó el correo.'
+        `[notification] sent: ${payload.scene} → ${payload.button}`
       );
 
       return 'sent';
