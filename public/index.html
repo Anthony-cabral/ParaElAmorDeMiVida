@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Un cuento, un poquito de calma y muchas historias por compartir.">
+  <title>Un pequeño refugio para ti</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" as="image" href="/assets/images/forest.webp">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script type="module" src="/js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Saltar al contenido</a>
+  <header class="site-header">
+    <button class="brand" id="home" aria-label="Volver al inicio"><span class="moon" aria-hidden="true">☾</span><span>un pequeño refugio<span class="brand-note">PARA TI, CON CARIÑO</span></span></button>
+    <nav aria-label="Navegación principal"><button id="nav-story" class="nav-button active">El cuento</button><button id="nav-catalog" class="nav-button">Nuestro cine</button><button id="nav-garden" class="nav-button">Las flores <span aria-hidden="true">✧</span></button></nav>
+  </header>
+  <main id="main" tabindex="-1"></main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden><span></span><button hidden>Reintentar</button><button class="dismiss" aria-label="Cerrar aviso">×</button></div>
+  <dialog id="dialog" aria-labelledby="dialog-title"><button class="dialog-close" aria-label="Cerrar diálogo">×</button><div id="dialog-content"></div></dialog>
+  <noscript><p class="noscript">Este cuento necesita JavaScript para abrirse y guardar nuestras películas.</p></noscript>
+</body>
+</html>

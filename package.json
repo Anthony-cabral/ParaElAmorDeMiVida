@@ -1,0 +1,19 @@
+{
+  "name": "un-pequeno-refugio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.0 <25"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "invite": "node scripts/invite.js",
+    "test": "node --test test/*.test.js",
+    "backup": "node scripts/backup.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.1",
+    "nodemailer": "^10.0.10"
+  }
+}
