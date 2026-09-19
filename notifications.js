@@ -1,68 +1,61 @@
-import nodemailer from 'nodemailer';
+export function createGmailNotifier(env = process.env) {
+  const url = env.MAIL_API_URL?.trim();
+  const secret = env.MAIL_API_SECRET?.trim();
 
-// Solo usa variables del servidor. Nunca imprime credenciales ni la configuración SMTP.
-export function createGmailNotifier(env = process.env, makeTransport = nodemailer.createTransport, log = console) {
-  let transport;
-
-  return async function sendAdventureStart() {
-    const user = env.GMAIL_USER?.trim();
-    const password = env.GMAIL_APP_PASSWORD?.replace(/\s/g, '');
-    const to = env.NOTIFICATION_TO?.trim();
-
-    if (!user || !password || !to) {
-      log.warn?.('[notification] disabled: faltan variables de Gmail.');
+  return async function sendNotification() {
+    if (!url || !secret) {
+      console.error(
+        '[notification] disabled: falta MAIL_API_URL o MAIL_API_SECRET'
+      );
       return 'disabled';
     }
 
-    const mailbox = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/;
-    if (!mailbox.test(user) || !mailbox.test(to)) {
-      log.error?.('[notification] failed: GMAIL_USER o NOTIFICATION_TO no tiene formato válido.');
-      return 'failed';
-    }
-
-    transport ??= makeTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: { user, pass: password },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 10000,
-      logger: false,
-      debug: false,
-      disableFileAccess: true,
-      disableUrlAccess: true
-    });
-
-    const date = new Intl.DateTimeFormat('es-DO', {
-      dateStyle: 'full',
-      timeStyle: 'long',
-      timeZone: 'America/Santo_Domingo'
-    }).format(new Date());
-
     try {
-      const result = await transport.sendMail({
-        from: user,
-        to,
-        subject: 'Alguien empezó tu pequeña aventura 🌙',
-        text: `Alguien pulsó el botón de inicio de este pequeño refugio.\n\n${date}\nZona: America/Santo_Domingo`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          secret
+        }),
+        redirect: 'follow',
+        signal: AbortSignal.timeout(15000)
       });
 
-      const accepted = result.accepted?.some(address =>
-        String(address).toLowerCase() === to.toLowerCase()
-      );
+      const data = await response.json().catch(() => null);
 
-      if (accepted) {
-        log.info?.('[notification] sent: Gmail aceptó el correo.');
-        return 'sent';
+      if (!response.ok) {
+        console.error(
+          `[notification] failed: API HTTP ${response.status}`
+        );
+        return 'failed';
       }
 
-      log.warn?.('[notification] failed: Gmail no confirmó el destinatario.');
-      return 'failed';
+      if (!data?.ok) {
+        console.error(
+          `[notification] failed: ${data?.error || 'API_ERROR'}`
+        );
+        return 'failed';
+      }
+
+      console.log(
+        '[notification] sent: Google Apps Script aceptó el correo.'
+      );
+
+      return 'sent';
+
     } catch (error) {
-      const code = error?.code || 'UNKNOWN';
-      const responseCode = error?.responseCode ? `/${error.responseCode}` : '';
-      log.error?.(`[notification] failed: ${code}${responseCode}`);
+      const reason =
+        error?.cause?.code ||
+        error?.code ||
+        error?.name ||
+        'API_ERROR';
+
+      console.error(
+        `[notification] failed: ${reason}`
+      );
+
       return 'failed';
     }
   };
