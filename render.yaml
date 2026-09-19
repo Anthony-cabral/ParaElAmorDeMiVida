@@ -1,16 +1,11 @@
-# No se despliega al ejecutar npm start. Importar en Render cuando decidas publicar.
 services:
   - type: web
-    name: mi-pequeno-refugio
+    name: paraelamordemivida
     runtime: node
-    plan: starter
-    buildCommand: npm ci
+    plan: free
+    buildCommand: npm install && npm run vendor-assets
     startCommand: npm start
     healthCheckPath: /healthz
-    disk:
-      name: refugio-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 24.14.0
@@ -18,8 +13,12 @@ services:
         value: production
       - key: HOST
         value: 0.0.0.0
-      - key: PRIVATE_DIR
-        value: /var/data/refugio
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: ParaElAmorDeMiVida
+      - key: MONGODB_COLLECTION
+        value: ParaElAmorDeMiVida
       - key: GMAIL_USER
         sync: false
       - key: GMAIL_APP_PASSWORD

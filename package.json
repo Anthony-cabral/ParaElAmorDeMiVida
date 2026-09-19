@@ -1,6 +1,6 @@
 {
   "name": "un-pequeno-refugio",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -10,10 +10,13 @@
     "start": "node server.js",
     "invite": "node scripts/invite.js",
     "test": "node --test test/*.test.js",
-    "backup": "node scripts/backup.js"
+    "backup": "node scripts/backup.js",
+    "vendor-assets": "node scripts/vendor-assets.js",
+    "migrate:sqlite": "node scripts/migrate-sqlite-to-mongo.js"
   },
   "dependencies": {
     "dotenv": "^18.0.1",
+    "mongodb": "^6.20.0",
     "nodemailer": "^10.0.10"
   }
 }

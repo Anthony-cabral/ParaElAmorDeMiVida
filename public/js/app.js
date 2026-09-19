@@ -5,6 +5,16 @@ import {showCatalog,syncCatalog} from './catalog.js';
 const main=document.querySelector('#main');
 let current='entry',started=false;
 let sessionReady;
+const bgMusic=new Audio('/assets/audio/golden-hour-piano.mp3');
+bgMusic.loop=true;
+bgMusic.volume=0.28;
+bgMusic.preload='auto';
+let musicStarted=false;
+function startMusic(){
+  if(musicStarted&&!bgMusic.paused)return;
+  musicStarted=true;
+  void bgMusic.play().catch(()=>{musicStarted=false;});
+}
 const remembered=key=>{try{return localStorage.getItem(key);}catch{return null;}};
 const remember=(key,val)=>{try{localStorage.setItem(key,val);}catch{}};
 const sceneNames=['El sendero','El lago','La casita','Nuestro cine','Las flores'];
@@ -30,8 +40,8 @@ export function go(scene){
    sessionReady.then(ready=>{
      if(current!=='catalog')return;
      main.replaceChildren();
-     if(hasCollectionAccess())showCatalog(main,go);
-     else main.append(el('section',{class:'empty-state'},el('h1',{tabindex:'-1'},ready?'Nuestro cine tiene su propia llave.':'Nuestro cine te espera.'),el('p',{},ready?'Abre aquí el enlace completo de la invitación para ver y guardar nuestras películas. Puedes copiarlo desde el catálogo de un navegador donde ya esté abierto.':'No pudimos abrir la colección. Vuelve a abrir la invitación completa cuando tengas conexión.'),button('Volver al cuento',()=>go('path'),'button gold')));
+     if(ready)showCatalog(main,go);
+     else main.append(el('section',{class:'empty-state'},el('h1',{tabindex:'-1'},'Nuestro cine te espera.'),el('p',{},'No pudimos abrir la colección. Vuelve a intentarlo cuando tengas conexión.'),button('Volver al cuento',()=>go('path'),'button gold')));
      focusHeading();
    });return;
  }
@@ -43,7 +53,7 @@ export function go(scene){
  if(copy.secondary)content.append(el('p',{class:'secondary'},copy.secondary));
  const actions=el('div',{class:'scene-actions'});
  if(scene==='entry'){
-   if(remembered('refugio-visited'))actions.append(button('Seguir con nuestras películas',()=>go('catalog'),'button primary'),button('Volver a recorrer el cuento',()=>go('path'),'text-button'));
+   if(remembered('refugio-visited'))actions.append(button('Seguir con nuestras películas',()=>{startMusic();go('catalog');},'button primary'),button('Volver a recorrer el cuento',()=>{startMusic();go('path');},'text-button'));
    else{
      const start=button(copy.button,startAdventure,'button primary');start.id='start-adventure';
      actions.append(start);
@@ -67,17 +77,17 @@ function ripple(event){
  node.append(ring);setTimeout(()=>ring.remove(),1800);
 }
 function startAdventure(){
+ startMusic();
  go('path');
- if(started||remembered('refugio-notice'))return;
+ if(started)return;
  started=true;
- remember('refugio-notice','attempted');
  void sessionReady.then(ready=>ready ? request('/api/adventure-start',{method:'POST',body:JSON.stringify({action:'start'})}) : undefined).catch(()=>{});
 }
 function renderGarden(){
  const c=config.garden;
  main.append(el('section',{class:'garden-scene'},el('div',{class:'garden-art'},el('img',{src:'/assets/images/bouquet.webp',alt:'Ramo completo de tres girasoles, rosas amarillas, tres lirios y flores silvestres, con follaje, papel crema y lazo dorado. A su lado, nuestro gato crema.',width:1122,height:1402}),fireflies(),el('span',{class:'petal','aria-hidden':'true'}),el('span',{class:'petal petal-two','aria-hidden':'true'})),el('div',{class:'garden-copy'},el('p',{class:'eyebrow'},c.eyebrow),el('p',{class:'garden-intro'},c.title),el('p',{},c.text),el('p',{},c.secondary),el('h1',{tabindex:'-1'},config.closingTitle),el('p',{class:'closing-date'},config.closingDate),el('p',{class:'last-line'},c.lastLine),el('div',{class:'garden-actions'},button('Volver a nuestro cine',()=>go('catalog'),'button primary'),button('Volver a pasear',()=>go('path'),'text-button')))),sceneFooter('garden'));
 }
-document.querySelector('#home').onclick=()=>go('entry');document.querySelector('#nav-story').onclick=()=>go('path');document.querySelector('#nav-catalog').onclick=()=>go('catalog');document.querySelector('#nav-garden').onclick=()=>go('garden');
+document.querySelector('#home').onclick=()=>{startMusic();go('entry');};document.querySelector('#nav-story').onclick=()=>{startMusic();go('path');};document.querySelector('#nav-catalog').onclick=()=>{startMusic();go('catalog');};document.querySelector('#nav-garden').onclick=()=>{startMusic();go('garden');};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&current==='catalog')syncCatalog();});
 window.addEventListener('focus',()=>{if(current==='catalog')syncCatalog();});
 document.title=config.title;
