@@ -1,16 +1,16 @@
 export function createGmailNotifier(
-  env=process.env
-){
-  const url=
+  env = process.env
+) {
+  const url =
     env.MAIL_API_URL?.trim();
 
-  const secret=
+  const secret =
     env.MAIL_API_SECRET?.trim();
 
   return async function sendNotification(
-    info={}
-  ){
-    if(!url||!secret){
+    info = {}
+  ) {
+    if (!url || !secret) {
       console.error(
         '[notification] disabled: falta MAIL_API_URL o MAIL_API_SECRET'
       );
@@ -18,18 +18,18 @@ export function createGmailNotifier(
       return 'disabled';
     }
 
-    const clean=(
+    const clean = (
       value,
       max
-    )=>
-      typeof value==='string'
-        ?value
-          .replace(/\s+/g,' ')
-          .trim()
-          .slice(0,max)
-        :'';
+    ) =>
+      typeof value === 'string'
+        ? value
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, max)
+        : '';
 
-    const payload={
+    const payload = {
       secret,
 
       scene:
@@ -60,17 +60,23 @@ export function createGmailNotifier(
         clean(
           info.browser,
           100
+        ),
+
+      location:
+        clean(
+          info.location,
+          150
         )
     };
 
-    try{
-      const response=
+    try {
+      const response =
         await fetch(
           url,
           {
-            method:'POST',
+            method: 'POST',
 
-            headers:{
+            headers: {
               'Content-Type':
                 'application/json'
             },
@@ -80,7 +86,7 @@ export function createGmailNotifier(
                 payload
               ),
 
-            redirect:'follow',
+            redirect: 'follow',
 
             signal:
               AbortSignal.timeout(
@@ -89,12 +95,12 @@ export function createGmailNotifier(
           }
         );
 
-      const data=
+      const data =
         await response
           .json()
-          .catch(()=>null);
+          .catch(() => null);
 
-      if(!response.ok){
+      if (!response.ok) {
         console.error(
           `[notification] failed: API HTTP ${response.status}`
         );
@@ -102,9 +108,9 @@ export function createGmailNotifier(
         return 'failed';
       }
 
-      if(!data?.ok){
+      if (!data?.ok) {
         console.error(
-          `[notification] failed: ${data?.error||'API_ERROR'}`
+          `[notification] failed: ${data?.error || 'API_ERROR'}`
         );
 
         return 'failed';
@@ -116,11 +122,11 @@ export function createGmailNotifier(
 
       return 'sent';
     }
-    catch(error){
-      const reason=
-        error?.cause?.code||
-        error?.code||
-        error?.name||
+    catch (error) {
+      const reason =
+        error?.cause?.code ||
+        error?.code ||
+        error?.name ||
         'API_ERROR';
 
       console.error(

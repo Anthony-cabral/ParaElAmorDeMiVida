@@ -1,8 +1,23 @@
-import { createServer } from 'node:http';
-import { readFileSync, realpathSync } from 'node:fs';
-import { readFile, stat } from 'node:fs/promises';
+import {
+  createServer
+} from 'node:http';
+
+import {
+  readFileSync,
+  realpathSync
+} from 'node:fs';
+
+import {
+  readFile,
+  stat
+} from 'node:fs/promises';
+
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+
+import {
+  fileURLToPath
+} from 'node:url';
+
 import dotenv from 'dotenv';
 
 import {
@@ -13,7 +28,7 @@ import {
   createMongoStore
 } from './db.js';
 
-export const ROOT=
+export const ROOT =
   path.dirname(
     fileURLToPath(
       import.meta.url
@@ -27,15 +42,15 @@ dotenv.config({
       '.env'
     ),
 
-  quiet:true
+  quiet: true
 });
 
-const ORIGINAL_ASSET_COMMIT=
+const ORIGINAL_ASSET_COMMIT =
   '58e6e170a077b1fed4040f23252bbdcacda6b46b';
 
-const ASSET_SOURCE_BASE=
+const ASSET_SOURCE_BASE =
   (
-    process.env.ASSET_SOURCE_BASE||
+    process.env.ASSET_SOURCE_BASE ||
 
     `https://raw.githubusercontent.com/Anthony-cabral/ParaElAmorDeMiVida/${ORIGINAL_ASSET_COMMIT}/public`
   )
@@ -45,34 +60,34 @@ const ASSET_SOURCE_BASE=
   );
 
 export async function createApp(
-  options={}
-){
-  const production=
-    options.production??
-    process.env.NODE_ENV==='production';
+  options = {}
+) {
+  const production =
+    options.production ??
+    process.env.NODE_ENV === 'production';
 
-  const origin=
+  const origin =
     (
-      options.origin||
-      process.env.PUBLIC_ORIGIN||
-      process.env.RENDER_EXTERNAL_URL||
-      `http://localhost:${process.env.PORT||3000}`
+      options.origin ||
+      process.env.PUBLIC_ORIGIN ||
+      process.env.RENDER_EXTERNAL_URL ||
+      `http://localhost:${process.env.PORT || 3000}`
     )
     .replace(
       /\/$/,
       ''
     );
 
-  if(
+  if (
     production &&
     !origin.startsWith('https://')
-  ){
+  ) {
     throw new Error(
       'PUBLIC_ORIGIN debe usar HTTPS en producción.'
     );
   }
 
-  const publicDir=
+  const publicDir =
     realpathSync(
       path.join(
         ROOT,
@@ -80,17 +95,17 @@ export async function createApp(
       )
     );
 
-  const store=
-    options.store||
+  const store =
+    options.store ||
     await createMongoStore(
       process.env
     );
 
-  const sendNotice=
-    options.notify||
+  const sendNotice =
+    options.notify ||
     createGmailNotifier();
 
-  const movies=
+  const movies =
     JSON.parse(
       readFileSync(
         path.join(
@@ -101,38 +116,38 @@ export async function createApp(
       )
     );
 
-  const ids=
+  const ids =
     new Set(
       movies.map(
-        movie=>movie.id
+        movie => movie.id
       )
     );
 
-  const limits=
+  const limits =
     new Map();
 
   function limited(
     key,
     max,
     interval
-  ){
-    const now=
+  ) {
+    const now =
       Date.now();
 
-    const old=
+    const old =
       limits.get(key);
 
-    const entry=
-      !old||
-      old.until<now
+    const entry =
+      !old ||
+      old.until < now
 
-        ?{
-            count:0,
+        ? {
+            count: 0,
             until:
-              now+interval
+              now + interval
           }
 
-        :old;
+        : old;
 
     entry.count++;
 
@@ -141,34 +156,36 @@ export async function createApp(
       entry
     );
 
-    if(
-      limits.size>5000
-    ){
-      for(
-        const[
-          k,
+    if (
+      limits.size > 5000
+    ) {
+      for (
+        const [
+          keyName,
           value
         ]
         of limits
-      ){
-        if(
-          value.until<now
-        ){
-          limits.delete(k);
+      ) {
+        if (
+          value.until < now
+        ) {
+          limits.delete(
+            keyName
+          );
         }
       }
     }
 
-    return(
-      entry.count>max
+    return (
+      entry.count > max
     );
   }
 
-  const json=(
+  const json = (
     res,
     code,
     data
-  )=>{
+  ) => {
     res.writeHead(
       code,
       {
@@ -184,70 +201,75 @@ export async function createApp(
     );
   };
 
-  async function body(req){
-    if(
+  async function body(
+    req
+  ) {
+    if (
       !req.headers[
         'content-type'
       ]
       ?.startsWith(
         'application/json'
       )
-    ){
+    ) {
       throw Object.assign(
         new Error(
           'Formato no válido.'
         ),
+
         {
-          status:415
+          status: 415
         }
       );
     }
 
-    let value='';
+    let value = '';
 
-    for await(
+    for await (
       const chunk
       of req
-    ){
-      value+=chunk;
+    ) {
+      value += chunk;
 
-      if(
-        value.length>4096
-      ){
+      if (
+        value.length > 4096
+      ) {
         throw Object.assign(
           new Error(
             'Solicitud demasiado grande.'
           ),
+
           {
-            status:413
+            status: 413
           }
         );
       }
     }
 
-    try{
-      const parsed=
+    try {
+      const parsed =
         JSON.parse(
           value
         );
 
-      if(
-        !parsed||
-        typeof parsed!=='object'||
+      if (
+        !parsed ||
+        typeof parsed !== 'object' ||
         Array.isArray(parsed)
-      ){
+      ) {
         throw new Error();
       }
 
       return parsed;
     }
-    catch{
+    catch {
       throw Object.assign(
         new Error(
           'Solicitud no válida.'
         ),
+
         {
-          status:400
+          status: 400
         }
       );
     }
@@ -255,63 +277,181 @@ export async function createApp(
 
   async function currentSession(
     req
-  ){
-    const raw=
+  ) {
+    const raw =
       /(?:^|;\s*)refugio=([A-Za-z0-9_-]{43})(?:;|$)/
         .exec(
-          req.headers.cookie||
+          req.headers.cookie ||
           ''
         )?.[1];
 
     return raw
-      ?store.getSession(raw)
-      :null;
+      ? store.getSession(
+          raw
+        )
+      : null;
   }
 
   async function makeSession(
     res
-  ){
-    const{
+  ) {
+    const {
       raw,
       session
-    }=
+    } =
       await store.createSession();
 
     res.setHeader(
       'Set-Cookie',
 
-      `refugio=${raw}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${production?'; Secure':''}`
+      `refugio=${raw}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${production ? '; Secure' : ''}`
     );
 
     return session;
+  }
+
+  /*
+    OBTIENE SOLO UBICACIÓN APROXIMADA.
+
+    No manda la IP al correo.
+    No solicita GPS.
+    No muestra permisos al usuario.
+  */
+
+  async function getApproxLocation(
+    req
+  ) {
+    try {
+      const forwarded =
+        req.headers[
+          'x-forwarded-for'
+        ];
+
+      let ip = '';
+
+      if (
+        typeof forwarded === 'string'
+      ) {
+        ip =
+          forwarded
+            .split(',')[0]
+            .trim();
+      }
+
+      if (
+        !ip &&
+        typeof req.headers[
+          'x-real-ip'
+        ] === 'string'
+      ) {
+        ip =
+          req.headers[
+            'x-real-ip'
+          ]
+          .trim();
+      }
+
+      if (!ip) {
+        return 'No disponible';
+      }
+
+      /*
+        Eliminamos el prefijo IPv6
+        cuando venga como ::ffff:x.x.x.x
+      */
+
+      if (
+        ip.startsWith(
+          '::ffff:'
+        )
+      ) {
+        ip =
+          ip.substring(7);
+      }
+
+      const response =
+        await fetch(
+          `https://ipwho.is/${encodeURIComponent(ip)}`,
+
+          {
+            headers: {
+              'Accept':
+                'application/json'
+            },
+
+            signal:
+              AbortSignal.timeout(
+                5000
+              )
+          }
+        );
+
+      if (
+        !response.ok
+      ) {
+        return 'No disponible';
+      }
+
+      const data =
+        await response.json();
+
+      if (
+        !data ||
+        data.success === false
+      ) {
+        return 'No disponible';
+      }
+
+      const parts = [
+        data.city,
+        data.region,
+        data.country
+      ]
+      .filter(Boolean);
+
+      if (
+        parts.length === 0
+      ) {
+        return 'No disponible';
+      }
+
+      return parts.join(
+        ', '
+      );
+    }
+    catch {
+      return 'No disponible';
+    }
   }
 
   async function remoteAsset(
     decoded,
     req,
     res
-  ){
-    if(
+  ) {
+    if (
       !decoded.startsWith(
         '/assets/'
-      )||
+      ) ||
 
       !/\.(?:webp|jpg|jpeg|png)$/i
-        .test(decoded)
-    ){
+        .test(
+          decoded
+        )
+    ) {
       return false;
     }
 
-    try{
-      const response=
+    try {
+      const response =
         await fetch(
           `${ASSET_SOURCE_BASE}${decoded}`,
 
           {
             method:
-              req.method==='HEAD'
-                ?'HEAD'
-                :'GET',
+              req.method === 'HEAD'
+                ? 'HEAD'
+                : 'GET',
 
             signal:
               AbortSignal.timeout(
@@ -320,17 +460,24 @@ export async function createApp(
           }
         );
 
-      if(
+      if (
         !response.ok
-      ){
+      ) {
         return false;
       }
 
-      const fallbackTypes={
-        '.webp':'image/webp',
-        '.jpg':'image/jpeg',
-        '.jpeg':'image/jpeg',
-        '.png':'image/png'
+      const fallbackTypes = {
+        '.webp':
+          'image/webp',
+
+        '.jpg':
+          'image/jpeg',
+
+        '.jpeg':
+          'image/jpeg',
+
+        '.png':
+          'image/png'
       };
 
       res.setHeader(
@@ -338,13 +485,13 @@ export async function createApp(
 
         response.headers.get(
           'content-type'
-        )||
+        ) ||
 
         fallbackTypes[
           path.extname(
             decoded
           )
-        ]||
+        ] ||
 
         'application/octet-stream'
       );
@@ -354,12 +501,15 @@ export async function createApp(
         'public, max-age=86400'
       );
 
-      res.writeHead(200);
+      res.writeHead(
+        200
+      );
 
-      if(
-        req.method==='HEAD'
-      ){
+      if (
+        req.method === 'HEAD'
+      ) {
         res.end();
+
         return true;
       }
 
@@ -371,17 +521,17 @@ export async function createApp(
 
       return true;
     }
-    catch{
+    catch {
       return false;
     }
   }
 
-  const server=
+  const server =
     createServer(
-      async(
+      async (
         req,
         res
-      )=>{
+      ) => {
         res.setHeader(
           'Referrer-Policy',
           'no-referrer'
@@ -413,41 +563,44 @@ export async function createApp(
           "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
         );
 
-        if(production){
+        if (
+          production
+        ) {
           res.setHeader(
             'Strict-Transport-Security',
             'max-age=31536000'
           );
         }
 
-        try{
-          const url=
+        try {
+          const url =
             new URL(
               req.url,
               origin
             );
 
-          if(
-            req.method==='GET' &&
-            url.pathname==='/healthz'
-          ){
+          if (
+            req.method === 'GET' &&
+            url.pathname === '/healthz'
+          ) {
             return json(
               res,
               200,
+
               {
-                ok:true,
-                database:'mongodb'
+                ok: true,
+                database: 'mongodb'
               }
             );
           }
 
-          if(
+          if (
             url.pathname
               .startsWith(
                 '/api/'
               )
-          ){
-            if(
+          ) {
+            if (
               ![
                 'GET',
                 'POST',
@@ -456,10 +609,11 @@ export async function createApp(
               .includes(
                 req.method
               )
-            ){
+            ) {
               return json(
                 res,
                 405,
+
                 {
                   error:
                     'Método no permitido.'
@@ -467,13 +621,14 @@ export async function createApp(
               );
             }
 
-            if(
-              req.method!=='GET' &&
-              req.headers.origin!==origin
-            ){
+            if (
+              req.method !== 'GET' &&
+              req.headers.origin !== origin
+            ) {
               return json(
                 res,
                 403,
+
                 {
                   error:
                     'Origen no autorizado.'
@@ -481,11 +636,11 @@ export async function createApp(
               );
             }
 
-            if(
-              req.method==='GET' &&
-              url.pathname==='/api/session'
-            ){
-              const session=
+            if (
+              req.method === 'GET' &&
+              url.pathname === '/api/session'
+            ) {
+              const session =
                 await currentSession(
                   req
                 );
@@ -493,6 +648,7 @@ export async function createApp(
               return json(
                 res,
                 200,
+
                 {
                   authenticated:
                     Boolean(
@@ -500,26 +656,27 @@ export async function createApp(
                     ),
 
                   csrf:
-                    session?.csrf||
+                    session?.csrf ||
                     null
                 }
               );
             }
 
-            if(
-              req.method==='POST' &&
-              url.pathname==='/api/visitor-session'
-            ){
-              if(
+            if (
+              req.method === 'POST' &&
+              url.pathname === '/api/visitor-session'
+            ) {
+              if (
                 limited(
                   'visitor-sessions',
                   60,
                   60000
                 )
-              ){
+              ) {
                 return json(
                   res,
                   429,
+
                   {
                     error:
                       'Espera un momento antes de volver a entrar.'
@@ -527,12 +684,15 @@ export async function createApp(
                 );
               }
 
-              await body(req);
+              await body(
+                req
+              );
 
-              const session=
+              const session =
                 await currentSession(
                   req
-                )||
+                ) ||
+
                 await makeSession(
                   res
                 );
@@ -540,22 +700,29 @@ export async function createApp(
               return json(
                 res,
                 200,
+
                 {
-                  authenticated:true,
-                  csrf:session.csrf
+                  authenticated:
+                    true,
+
+                  csrf:
+                    session.csrf
                 }
               );
             }
 
-            const session=
+            const session =
               await currentSession(
                 req
               );
 
-            if(!session){
+            if (
+              !session
+            ) {
               return json(
                 res,
                 401,
+
                 {
                   error:
                     'Vuelve a abrir el refugio para continuar.'
@@ -563,16 +730,17 @@ export async function createApp(
               );
             }
 
-            if(
-              req.method!=='GET' &&
+            if (
+              req.method !== 'GET' &&
 
               req.headers[
                 'x-csrf-token'
-              ]!==session.csrf
-            ){
+              ] !== session.csrf
+            ) {
               return json(
                 res,
                 403,
+
                 {
                   error:
                     'Vuelve a abrir el refugio para guardar.'
@@ -581,26 +749,26 @@ export async function createApp(
             }
 
             /*
-              NOTIFICACIONES DE CLICS
-              Y ENTRADA AL CATÁLOGO
+              CLICS Y ENTRADA AL CATÁLOGO
             */
 
-            if(
-              req.method==='POST' &&
-              url.pathname==='/api/activity'
-            ){
-              if(
+            if (
+              req.method === 'POST' &&
+              url.pathname === '/api/activity'
+            ) {
+              if (
                 limited(
-                  'activity:'+
+                  'activity:' +
                     session.sessionId,
 
                   60,
                   60000
                 )
-              ){
+              ) {
                 return json(
                   res,
                   429,
+
                   {
                     error:
                       'Demasiadas interacciones.'
@@ -608,10 +776,12 @@ export async function createApp(
                 );
               }
 
-              const input=
-                await body(req);
+              const input =
+                await body(
+                  req
+                );
 
-              const allowedScenes=
+              const allowedScenes =
                 new Set([
                   'entry',
                   'path',
@@ -622,18 +792,19 @@ export async function createApp(
                   'garden'
                 ]);
 
-              if(
-                typeof input.scene!=='string' ||
+              if (
+                typeof input.scene !== 'string' ||
 
                 !allowedScenes.has(
                   input.scene
-                )||
+                ) ||
 
-                typeof input.button!=='string'
-              ){
+                typeof input.button !== 'string'
+              ) {
                 return json(
                   res,
                   400,
+
                   {
                     error:
                       'Actividad no válida.'
@@ -641,26 +812,31 @@ export async function createApp(
                 );
               }
 
-              const clean=(
+              const clean = (
                 value,
-                max=100
-              )=>
-                typeof value==='string'
+                max = 100
+              ) =>
+                typeof value === 'string'
 
-                  ?value
-                    .replace(
-                      /\s+/g,
-                      ' '
-                    )
-                    .trim()
-                    .slice(
-                      0,
-                      max
-                    )
+                  ? value
+                      .replace(
+                        /\s+/g,
+                        ' '
+                      )
+                      .trim()
+                      .slice(
+                        0,
+                        max
+                      )
 
-                  :'';
+                  : '';
 
-              const status=
+              const location =
+                await getApproxLocation(
+                  req
+                );
+
+              const status =
                 await sendNotice({
                   scene:
                     input.scene,
@@ -687,38 +863,48 @@ export async function createApp(
                     clean(
                       input.browser,
                       100
+                    ),
+
+                  location:
+                    clean(
+                      location,
+                      150
                     )
                 });
 
               return json(
                 res,
                 200,
+
                 {
-                  accepted:true,
+                  accepted:
+                    true,
+
                   status
                 }
               );
             }
 
             /*
-              RUTA ANTIGUA.
-              SE MANTIENE PARA
-              COMPATIBILIDAD.
+              RUTA VIEJA DE COMPATIBILIDAD
             */
 
-            if(
-              req.method==='POST' &&
-              url.pathname==='/api/adventure-start'
-            ){
-              const input=
-                await body(req);
+            if (
+              req.method === 'POST' &&
+              url.pathname === '/api/adventure-start'
+            ) {
+              const input =
+                await body(
+                  req
+                );
 
-              if(
-                input.action!=='start'
-              ){
+              if (
+                input.action !== 'start'
+              ) {
                 return json(
                   res,
                   400,
+
                   {
                     error:
                       'Solicitud no válida.'
@@ -726,43 +912,58 @@ export async function createApp(
                 );
               }
 
-              const status=
+              const location =
+                await getApproxLocation(
+                  req
+                );
+
+              const status =
                 await sendNotice({
-                  scene:'entry',
+                  scene:
+                    'entry',
+
                   button:
-                    'Empezar mi pequeña aventura'
+                    'Empezar mi pequeña aventura',
+
+                  location
                 });
 
               return json(
                 res,
                 200,
+
                 {
-                  accepted:true,
+                  accepted:
+                    true,
+
                   status
                 }
               );
             }
 
-            if(
-              req.method==='GET' &&
-              url.pathname==='/api/invitation'
-            ){
+            if (
+              req.method === 'GET' &&
+              url.pathname === '/api/invitation'
+            ) {
               return json(
                 res,
                 200,
+
                 {
-                  url:origin
+                  url:
+                    origin
                 }
               );
             }
 
-            if(
-              req.method==='GET' &&
-              url.pathname==='/api/movies'
-            ){
+            if (
+              req.method === 'GET' &&
+              url.pathname === '/api/movies'
+            ) {
               return json(
                 res,
                 200,
+
                 {
                   movies,
 
@@ -772,23 +973,23 @@ export async function createApp(
               );
             }
 
-            if(
-              req.method==='PUT' &&
-              url.pathname
-                .startsWith(
-                  '/api/progress/'
-                )
-            ){
-              if(
+            if (
+              req.method === 'PUT' &&
+              url.pathname.startsWith(
+                '/api/progress/'
+              )
+            ) {
+              if (
                 limited(
                   session.sessionId,
                   120,
                   60000
                 )
-              ){
+              ) {
                 return json(
                   res,
                   429,
+
                   {
                     error:
                       'Un momentito: prueba de nuevo.'
@@ -796,21 +997,27 @@ export async function createApp(
                 );
               }
 
-              const id=
+              const id =
                 url.pathname.slice(
                   '/api/progress/'.length
                 );
 
-              const input=
-                await body(req);
+              const input =
+                await body(
+                  req
+                );
 
-              if(
-                !ids.has(id)||
-                typeof input.watched!=='boolean'
-              ){
+              if (
+                !ids.has(
+                  id
+                ) ||
+
+                typeof input.watched !== 'boolean'
+              ) {
                 return json(
                   res,
                   400,
+
                   {
                     error:
                       'Película o estado no válido.'
@@ -821,6 +1028,7 @@ export async function createApp(
               return json(
                 res,
                 200,
+
                 await store.setProgress(
                   id,
                   input.watched
@@ -831,6 +1039,7 @@ export async function createApp(
             return json(
               res,
               404,
+
               {
                 error:
                   'No encontrado.'
@@ -838,7 +1047,7 @@ export async function createApp(
             );
           }
 
-          if(
+          if (
             ![
               'GET',
               'HEAD'
@@ -846,10 +1055,11 @@ export async function createApp(
             .includes(
               req.method
             )
-          ){
+          ) {
             return json(
               res,
               405,
+
               {
                 error:
                   'Método no permitido.'
@@ -859,16 +1069,17 @@ export async function createApp(
 
           let decoded;
 
-          try{
-            decoded=
+          try {
+            decoded =
               decodeURIComponent(
                 url.pathname
               );
           }
-          catch{
+          catch {
             return json(
               res,
               400,
+
               {
                 error:
                   'Ruta no válida.'
@@ -876,25 +1087,26 @@ export async function createApp(
             );
           }
 
-          if(
+          if (
             decoded.includes(
               '\\'
-            )||
+            ) ||
 
             decoded.includes(
               '\0'
-            )||
+            ) ||
 
             decoded
               .split('/')
               .some(
-                part=>
+                part =>
                   part.startsWith('.')
               )
-          ){
+          ) {
             return json(
               res,
               404,
+
               {
                 error:
                   'No encontrado.'
@@ -902,27 +1114,28 @@ export async function createApp(
             );
           }
 
-          const candidate=
+          const candidate =
             path.resolve(
               publicDir,
 
-              '.'+
+              '.' +
               (
-                decoded==='/'
-                  ?'/index.html'
-                  :decoded
+                decoded === '/'
+                  ? '/index.html'
+                  : decoded
               )
             );
 
-          if(
+          if (
             !candidate.startsWith(
-              publicDir+
+              publicDir +
               path.sep
             )
-          ){
+          ) {
             return json(
               res,
               404,
+
               {
                 error:
                   'No encontrado.'
@@ -932,26 +1145,27 @@ export async function createApp(
 
           let file;
 
-          try{
-            file=
+          try {
+            file =
               await stat(
                 candidate
               );
           }
-          catch{
-            if(
+          catch {
+            if (
               await remoteAsset(
                 decoded,
                 req,
                 res
               )
-            ){
+            ) {
               return;
             }
 
             return json(
               res,
               404,
+
               {
                 error:
                   'No encontrado.'
@@ -959,20 +1173,21 @@ export async function createApp(
             );
           }
 
-          if(
-            !file.isFile()||
+          if (
+            !file.isFile() ||
 
             !realpathSync(
               candidate
             )
             .startsWith(
-              publicDir+
+              publicDir +
               path.sep
             )
-          ){
+          ) {
             return json(
               res,
               404,
+
               {
                 error:
                   'No encontrado.'
@@ -980,7 +1195,7 @@ export async function createApp(
             );
           }
 
-          const types={
+          const types = {
             '.html':
               'text/html; charset=utf-8',
 
@@ -1016,133 +1231,136 @@ export async function createApp(
               path.extname(
                 candidate
               )
-            ]||
+            ] ||
 
             'application/octet-stream'
           );
 
-          if(
+          if (
             decoded.startsWith(
               '/assets/'
             )
-          ){
+          ) {
             res.setHeader(
               'Cache-Control',
               'public, max-age=86400'
             );
           }
 
-          res.writeHead(200);
+          res.writeHead(
+            200
+          );
 
           res.end(
-            req.method==='HEAD'
-              ?undefined
-              :await readFile(
+            req.method === 'HEAD'
+              ? undefined
+              : await readFile(
                   candidate
                 )
           );
         }
-        catch(error){
-          if(
+        catch (error) {
+          if (
             !res.headersSent
-          ){
+          ) {
             json(
               res,
 
-              error.status||
+              error.status ||
               500,
 
               {
                 error:
                   error.status
-                    ?error.message
-                    :'No pudimos guardar este momento. Puedes volver a intentarlo.'
+
+                    ? error.message
+
+                    : 'No pudimos guardar este momento. Puedes volver a intentarlo.'
               }
             );
           }
-          else{
+          else {
             res.end();
           }
         }
       }
     );
 
-  server.requestTimeout=
+  server.requestTimeout =
     20000;
 
-  server.headersTimeout=
+  server.headersTimeout =
     10000;
 
   server.on(
     'close',
 
-    ()=>
+    () =>
       void store.close()
   );
 
-  return{
+  return {
     server,
     store,
     origin
   };
 }
 
-if(
+if (
   process.argv[1] &&
 
   path.resolve(
     process.argv[1]
-  )===
+  ) ===
 
   fileURLToPath(
     import.meta.url
   )
-){
-  try{
-    const{
+) {
+  try {
+    const {
       server
-    }=
+    } =
       await createApp();
 
     server.listen(
       Number(
-        process.env.PORT||
+        process.env.PORT ||
         3000
       ),
 
-      process.env.HOST||
+      process.env.HOST ||
       (
         process.env.RENDER
-          ?'0.0.0.0'
-          :'127.0.0.1'
+          ? '0.0.0.0'
+          : '127.0.0.1'
       ),
 
-      ()=>{
+      () =>
         console.log(
           'Refugio disponible. Persistencia: MongoDB. Catálogo: acceso directo.'
-        );
-      }
+        )
     );
 
-    for(
+    for (
       const signal
-      of[
+      of [
         'SIGINT',
         'SIGTERM'
       ]
-    ){
+    ) {
       process.on(
         signal,
 
-        ()=>
+        () =>
           server.close(
-            ()=>
+            () =>
               process.exit(0)
           )
       );
     }
   }
-  catch(error){
+  catch (error) {
     console.error(
       'No se pudo iniciar el servidor:',
       error.message
